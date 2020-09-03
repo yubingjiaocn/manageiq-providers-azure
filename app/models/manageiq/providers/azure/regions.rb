@@ -157,6 +157,22 @@ module ManageIQ
           :name        => "westus2",
           :description => _("West US 2"),
         },
+        "chinaeast"            => {
+          :name        => "chinaeast",
+          :description => _("China East"),
+        },
+        "chinaeast2"            => {
+          :name        => "chinaeast2",
+          :description => _("China East 2"),
+        },
+        "chinanorth"            => {
+          :name        => "chinanorth",
+          :description => _("China North"),
+        },
+        "chinanorth2"            => {
+          :name        => "chinanorth2",
+          :description => _("China North 2"),
+        },
       }.freeze
 
       # Returns an array of hashes corresponding to the REGIONS hash, excluding

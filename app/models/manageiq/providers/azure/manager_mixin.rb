@@ -14,6 +14,20 @@ module ManageIQ::Providers::Azure::ManagerMixin
     connect(options)
   end
 
+  def edit_with_params(params)
+    default_endpoint = params.delete("endpoints").dig("default")
+    default_authentication = params.delete("authentications").dig("default")
+
+    tap do |ems|
+      ems.default_authentication.assign_attributes(default_authentication)
+      ems.default_endpoint.assign_attributes(default_endpoint)
+
+      ems.assign_attributes(params)
+
+      ems.save!
+    end
+  end
+
   module ClassMethods
     def params_for_create
       @params_for_create ||= {
@@ -47,14 +61,13 @@ module ManageIQ::Providers::Azure::ManagerMixin
           },
           {
             :component => 'sub-form',
-            :name      => 'endpoints-subform',
+            :name      => 'endpoints',
             :title     => _("Endpoint"),
             :fields    => [
               {
                 :component              => 'validate-provider-credentials',
                 :name                   => 'authentications.default.valid',
-                :skipSubmit             => true,
-                :validationDependencies => %w[type zone_id provider_region subscription uid_ems],
+                :validationDependencies => %w[type zone_name provider_region subscription uid_ems],
                 :fields                 => [
                   {
                     :component => "text-field",
@@ -83,6 +96,24 @@ module ManageIQ::Providers::Azure::ManagerMixin
           },
         ],
       }.freeze
+    end
+
+    def create_from_params(params)
+      endpoints = params.delete("endpoints") || {'default' => {}} # Fall back to an empty default endpoint
+      authentications = params.delete("authentications")
+
+      params[:zone] = Zone.find_by(:name => params.delete("zone_name"))
+      new(params).tap do |ems|
+        endpoints.each do |authtype, endpoint|
+          ems.endpoints.new(endpoint.merge(:role => authtype))
+        end
+
+        authentications.each do |authtype, authentication|
+          ems.authentications.new(authentication.merge(:authtype => authtype))
+        end
+
+        ems.save!
+      end
     end
 
     # Verify Credentials
@@ -172,6 +203,8 @@ module ManageIQ::Providers::Azure::ManagerMixin
         ::Azure::Armrest::Environment::Germany
       when /usgov/i
         ::Azure::Armrest::Environment::USGovernment
+      when /china/i
+        ::Azure::Armrest::Environment::China
       else
         ::Azure::Armrest::Environment::Public
       end
